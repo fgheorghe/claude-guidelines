@@ -1,175 +1,121 @@
-# Formatting
+Rules
 
-## Method chaining
+Method chaining
 
-- Break method chains across multiple lines once there are two or more calls.
-- One call per line. The dot starts the line, aligned under the receiver.
-- Even short chains get broken if any single call has more than one argument or a function argument.
-- Single-call expressions stay on one line.
+Break a chain across multiple lines once it has two or more calls. One call per line, dot starting the line, aligned under the receiver. Break short chains too if any single call has
+more than one argument or a function argument. Single-call expressions stay on one line.
 
 Good:
-```js
 const result = users
     .filter(u => u.active)
     .map(u => u.name)
     .sort();
-```
 
 Bad:
-```js
 const result = users.filter(u => u.active).map(u => u.name).sort();
-```
 
-## Call expressions
+Call expressions
 
-Break a function call across multiple lines when it earns the break, leave it compact when it doesn't. The threshold is concrete, not aesthetic.
+Expand to one-argument-per-line when any of these is true:
 
-### When to expand a call
+- Three or more arguments.
+- Any single argument is complex: an await, a ternary, an object or array literal, a nested call, or an arrow function with a body.
+- The call wouldn't fit on one line at 120 chars.
 
-Expand to one-argument-per-line when *any* of these is true:
-
-- The call has three or more arguments.
-- Any single argument is a complex expression: an `await`, a ternary, an object or array literal, a nested call, an arrow function with a body.
-- The full call wouldn't fit on one line at the project's line width.
-
-Otherwise, keep the call on one line.
-
-### How to expand
-
-- Opening paren stays on the call line.
-- Each argument on its own line, indented one level deeper than the statement.
-- Trailing comma after the last argument.
-- Closing paren on its own line, back at the statement's indent level.
+Otherwise keep the call on one line. When expanding: opening paren on the call line, each argument on its own line indented one level deeper, trailing comma after the last argument,
+closing paren back at the statement's indent.
 
 Good:
-```js
 const body = await fetchPriceBatchBody(chunk, countryCode);
 
 const cached = await readCacheIfFresh(
     DETAILS_CACHE_DIR,
     appId,
     DETAILS_CACHE_TTL_MS
-);
+);  
 
-await persistPriceBatch(
-    body,
-    chunk,
-    countryCode,
-    priceOverviews
-);
-
-return response.json(
-    await applyAiDescription(cached, appId, countryCode)
-);
-```
-
-Note that `fetchPriceBatchBody` stays compact (two short arguments), `readCacheIfFresh` and `persistPriceBatch` expand (three and four arguments), and `response.json` expands at the outer level because its single argument is an `await` expression — but the inner `applyAiDescription` stays compact because *its* three arguments are all short identifiers and the break is already paying for itself at the outer level.
-
-Bad — uniformly compact:
-```js
-const cached = await readCacheIfFresh(DETAILS_CACHE_DIR, appId, DETAILS_CACHE_TTL_MS);
-await persistPriceBatch(body, chunk, countryCode, priceOverviews);
-return response.json(await applyAiDescription(cached, appId, countryCode));
-```
-
-Each line is a left-to-right blob; the argument list and the verb compete for attention.
-
-Bad — uniformly expanded:
-```js
+Bad — expansion for a trivial call:
 const body = await fetchPriceBatchBody(
-    chunk,
+    chunk, 
     countryCode
-);
-```
+);  
 
-Three lines for what was one. The expansion adds vertical weight without adding clarity — `chunk` and `countryCode` were already legible side by side.
+When a call regularly takes four or more positional arguments, suggest an options object — unless the arguments have a strong natural order (coordinates, source/destination,
+key/value).
 
-### Threshold, not absolute rule
+String interpolation
 
-The point of the threshold is that *visual weight should match semantic weight*. A trivial two-argument call is a trivial line. A four-argument call with policy-bearing values is a paragraph. Uniform formatting flattens that signal; threshold formatting preserves it.
+Default to template literals when a string is assembled from more than one piece. + between strings is a violation.
 
-### Four-argument calls are a signal
-
-When you find yourself expanding a call to four or more positional arguments regularly, consider whether the function should take an options object instead:
-
-```js
-await persistPriceBatch({
-    body,
-    chunk,
-    countryCode,
-    priceOverviews
-});
-```
-
-The call site is now self-labeling, reordering is free, and adding a fifth field doesn't break existing callers. Switch to an options object once positional arguments cross three or four, *unless* the arguments have a strong natural order (coordinates, source/destination, key/value).
-
-## Visual rhythm ("aired" code)
-
-- Blank line between every logical group of statements. A "group" is one idea: a declaration block, a guard clause, a computation, a return.
-- Blank line after every variable declaration block that has its own JSDoc.
-- Blank line before and after every `if`, `for`, `while`, `try`, and `switch` block.
-- Blank line between every method definition, with no exceptions.
-- Inside function bodies: guard clauses at the top, blank line, then the main work, blank line, then the return.
-- Do not pack multiple statements onto one line, even with semicolons.
-- Prefer two short functions over one long one. If a function exceeds ~30 lines, look for a split.
+- Replace 'X ' + value + ' Y' with `X ${value} Y`.
+- Whole-string literals with no interpolation use single quotes. Backticks without interpolation or a newline are a false signal.
+- Multi-line strings use a single template literal with real newlines, not + concatenation.
+- Keep interpolations short — they are values, not expressions to compute. If logic is needed, extract a named variable first.
 
 Good:
-```js
-/** Used to format a user record for display. */
+throw new Error(`llama.cpp ${response.status} ${response.statusText}`);
+const url = `https://${host}/api/files/${id}`;
+
+Bad:
+throw new Error('llama.cpp ' + response.status + ' ' + response.statusText);
+const url = 'https://' + host + '/api/files/' + id;
+const reason = `bad-email`;  // backticks without interpolation
+
++ is permitted in two cases: arithmetic that happens to land in a string context (`${count + 1}`), and joining two known string variables (prefix + suffix).
+
+Visual rhythm ("aired" code)
+
+- Blank line between every logical group of statements. A group is one idea: a declaration block, a guard clause, a computation, a return.
+- Blank line after every variable declaration block that has its own JSDoc.
+- Blank line before and after every if, for, while, try, and switch block.
+- Blank line between every method definition, no exceptions.
+- Function body shape: guard clauses → blank → main work → blank → return.
+- One statement per line — never pack multiple statements with semicolons.
+- Functions over ~30 lines should be split.
+
+Good:
 function formatUser(user) {
     if (!user) {
         return null;
-    }
-
+    }   
+    
     const name = user.name.trim();
     const age = user.age || 0;
 
-    return {
-        name: name,
-        age: age,
-        label: `${name} (${age})`
-    };
+    return { name, age, label: `${name} (${age})` };
 }
-```
 
 Bad:
-```js
 function formatUser(user) {
     if (!user) return null;
     const name = user.name.trim(); const age = user.age || 0;
     return { name, age, label: `${name} (${age})` };
 }
-```
 
-## Formatting baseline
+Formatting baseline
 
-- Indent: 2 spaces (enforced by ESLint; see `linting.md`). Worked examples in this guide use 4 spaces for visual clarity in prose, but production code uses 2.
-- Single quotes for strings, double for JSX attributes if applicable.
+- Indent: 2 spaces.
+- Single quotes for strings (double for JSX attributes).
 - Semicolons always.
 - Trailing commas in multi-line literals.
 - One statement per line.
-- Spaces around operators, after commas, after keywords (`if (x)` not `if(x)`).
-- Max line length: 120 characters (enforced by ESLint).
+- Spaces around operators, after commas, after keywords (if (x) not if(x)).
+- Max line length: 120 characters.
 
-## File organization
+File organization
 
-- License/header comment at the top.
-- Place constants at the top of their file, function, method, or block.
-- Imports or environment detection next, with a blank line after.
-- Constants and regexes, each with their own JSDoc.
+- Imports at the top, blank line after.
+- Constants and regexes next, each with their own JSDoc.
 - Internal helpers.
 - Public API.
 - Exports at the bottom.
-- Use banner comments to separate major sections, and include a very brief description (ie.: CONFIG MANAGEMENT, INPUT VALIDATION, ADDRESS MANAGEMENT):
+- Banner comments separate major sections, with a brief description:
 
-```js
 /*----------------------------------CONFIG MANAGEMENT--------------------------------------*/
 /*----------------------------------INPUT VALIDATION---------------------------------------*/
-```
 
-## Worked example combining all rules
+Worked example
 
-```js
 /** Used to match valid email addresses. */
 const reEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -195,9 +141,8 @@ function validateUser(user) {
     return {
         ok: true,
         user: {
-            name: name,
+            name,
             email: user.email
         }
     };
 }
-```
