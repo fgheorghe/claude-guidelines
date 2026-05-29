@@ -14,34 +14,116 @@ const result = users
 Bad:
 const result = users.filter(u => u.active).map(u => u.name).sort();
 
-Call expressions
+This is the leading-operator rule, and it covers property, method, and optional chains (`.`, `?.` start the line). Logical operators (`&&`, `||`) and ternaries break differently — they trail
+the line. See Breaking long expressions below.
 
-Expand to one-argument-per-line when any of these is true:
+Call arguments, parameters, and object literals
 
-- Three or more arguments.
-- Any single argument is complex: an await, a ternary, an object or array literal, a nested call, or an arrow function with a body.
-- The call wouldn't fit on one line at 120 chars.
+One uniform rule: a delimited list of more than one item breaks one-item-per-line; a single item stays on one line. "List" means call arguments, function parameters (positional or
+destructured), and object-literal properties — wherever they appear, including object literals that are returned or assigned, not only those passed as arguments.
 
-Otherwise keep the call on one line. When expanding: opening paren on the call line, each argument on its own line indented one level deeper, trailing comma after the last argument,
-closing paren back at the statement's indent.
+Expand one-item-per-line when any of these is true:
 
-Good:
-const body = await fetchPriceBatchBody(chunk, countryCode);
+- Two or more items (arguments, parameters, or object properties).
+- Any single item is complex: an await, a ternary, an object or array literal, a nested call, or an arrow function with a body.
+- The list wouldn't fit on one line at 120 chars.
 
+A single-item list stays on one line: `findUser(username)`, `(value) => value.trim()`, `{id}`, `conn.send(payload)`.
+
+When expanding: the opening paren or brace stays on the line that introduces it, each item on its own line indented one level deeper, a trailing comma after the last item (comma-dangle
+requires it), and the closing delimiter back at the statement's indent.
+
+Good — call arguments:
 const cached = await readCacheIfFresh(
     DETAILS_CACHE_DIR,
     appId,
-    DETAILS_CACHE_TTL_MS
-);  
+    DETAILS_CACHE_TTL_MS,
+);
 
-Bad — expansion for a trivial call:
-const body = await fetchPriceBatchBody(
-    chunk, 
-    countryCode
-);  
+await fetchPriceBatchBody(
+    chunk,
+    countryCode,
+);
+
+Good — function parameters:
+const issueSession = (
+    username,
+    role,
+) => {
+    // ...
+};
+
+Good — object-literal argument and destructured parameter:
+await handleMcpRequest({
+    request,
+    response,
+    persona,
+    chatApi,
+});
+
+const createExecutor = ({
+    turnEvents,
+    conversationId,
+    signal,
+    resolve,
+    reject,
+}) => {
+    // ...
+};
+
+Good — a single item stays inline:
+const body = await fetchPriceBatchBody(chunk);
+const wrap = (value) => value;
+queue.push({item});
+
+Bad — two or more items crammed onto one line:
+await handleMcpRequest({request, response, persona, chatApi});
+const createExecutor = ({turnEvents, conversationId, signal, resolve, reject}) => {
+const cached = await readCacheIfFresh(DETAILS_CACHE_DIR, appId, DETAILS_CACHE_TTL_MS);
+const issueSession = (username, role) => {
 
 When a call regularly takes four or more positional arguments, suggest an options object — unless the arguments have a strong natural order (coordinates, source/destination,
 key/value).
+
+Breaking long expressions
+
+When an expression is too long for one line at 120 chars, where the line breaks depends on the operator:
+
+- Property / method / optional chains break with the operator leading the next line (`.`, `?.`), indented one level under the receiver. This is the Method chaining rule above.
+- Logical operators (`&&`, `||`) break with the operator trailing the line. Each operand starts a new line at the same indent. Never lead a line with `&&` or `||`.
+- A ternary that doesn't fit breaks with `?` trailing the condition line and `:` trailing the true-branch line; the true and false branches each sit on their own line, indented one level
+  under the start. Short ternaries stay on one line.
+
+Break after `=`. When a declaration's right-hand side is itself a multi-line expression — a multi-line boolean, a broken ternary, a regex literal, a string split across source lines — put
+the `=` at the end of the declaration line and place the whole RHS on the following line(s), indented one level. Don't leave a lone operand or operator dangling on the declaration line.
+
+Good:
+const realCompletionTokens =
+    Number.isFinite(usage?.completion_tokens) ? usage.completion_tokens : null;
+
+const hasDeps =
+    (pkg.dependencies && Object.keys(pkg.dependencies).length > 0) ||
+    (pkg.optionalDependencies && Object.keys(pkg.optionalDependencies).length > 0);
+
+const conversationId = typeof body?.conversation_id === 'string' ?
+    body.conversation_id.trim() :
+    '';
+
+const host =
+    request.headers['x-forwarded-host']
+        ?.split(',')[0]
+        ?.trim() ||
+    request.headers.host ||
+    'localhost';
+
+Bad — leading logical operator:
+const hasDeps = (pkg.dependencies && Object.keys(pkg.dependencies).length > 0)
+    || (pkg.optionalDependencies && Object.keys(pkg.optionalDependencies).length > 0);
+
+Bad — RHS dangling on the declaration line:
+const host = request.headers['x-forwarded-host']
+    ?.split(',')[0]
+    ?.trim() || request.headers.host || 'localhost';
 
 String interpolation
 
@@ -77,12 +159,16 @@ Good:
 function formatUser(user) {
     if (!user) {
         return null;
-    }   
-    
+    }
+
     const name = user.name.trim();
     const age = user.age || 0;
 
-    return { name, age, label: `${name} (${age})` };
+    return {
+        name,
+        age,
+        label: `${name} (${age})`,
+    };
 }
 
 Bad:
@@ -97,7 +183,8 @@ Formatting baseline
 - Indent: 2 spaces.
 - Single quotes for strings (double for JSX attributes).
 - Semicolons always.
-- Trailing commas in multi-line literals.
+- Trailing comma after the last item of any multi-line list — object/array literals, call arguments, and parameter lists (comma-dangle: always-multiline).
+- No spaces inside braces: `{a: 1}`, `{name}`, `({id}) => …` — never `{ a: 1 }` (object-curly-spacing: never).
 - One statement per line.
 - Spaces around operators, after commas, after keywords (if (x) not if(x)).
 - Max line length: 120 characters.
@@ -127,11 +214,17 @@ const MAX_RETRIES = 3;
 /** Used to validate a single user record before insert. */
 function validateUser(user) {
     if (!user) {
-        return { ok: false, reason: 'missing' };
+        return {
+            ok: false,
+            reason: 'missing',
+        };
     }
 
     if (!reEmail.test(user.email)) {
-        return { ok: false, reason: 'bad-email' };
+        return {
+            ok: false,
+            reason: 'bad-email',
+        };
     }
 
     const name = user.name
@@ -142,7 +235,7 @@ function validateUser(user) {
         ok: true,
         user: {
             name,
-            email: user.email
-        }
+            email: user.email,
+        },
     };
 }
